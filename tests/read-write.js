@@ -16,17 +16,47 @@ module.exports.blobWriteStream = function(test, common) {
       from([new Buffer('foo'), new Buffer('bar')]).pipe(ws)
     })
   })
+
+  test('writing on the end stream', function(t) {
+    common.setup(test, function(err, store) {
+      t.notOk(err, 'no setup err')
+
+      var b
+      var ws = store.createWriteStream({name: 'test.js'}, function(err, blob) {
+        t.notOk(err, 'no blob write err')
+        t.ok(blob.key, 'blob has key')
+        b = blob
+      }).end(new Buffer('baz'), function() {
+        var rs = store.createReadStream(b)
+
+        rs.on('error', function(e) {
+          t.false(e, 'no read stream err')
+          t.end()
+        })
+
+        rs.pipe(concat(function(file) {
+          t.equal(file.length, 9, 'blob length is correct')
+          common.teardown(test, store, b, function(err) {
+            t.error(err)
+            t.end()
+          })
+        }))
+      })
+
+      from([new Buffer('foo'), new Buffer('bar')]).pipe(ws)
+    })
+  })
 }
 
 module.exports.blobReadStream = function(test, common) {
   test('reading a blob as a stream', function(t) {
     common.setup(test, function(err, store) {
       t.notOk(err, 'no setup err')
-      
+
       var ws = store.createWriteStream({name: 'test.js'}, function(err, blob) {
         t.notOk(err, 'no blob write err')
         t.ok(blob.key, 'blob has key')
-        
+
         var rs = store.createReadStream(blob)
 
         rs.on('error', function(e) {
@@ -42,7 +72,7 @@ module.exports.blobReadStream = function(test, common) {
           })
         }))
       })
-      
+
       from([new Buffer('foo'), new Buffer('bar')]).pipe(ws)
     })
   })
@@ -52,7 +82,7 @@ module.exports.blobReadError = function(test, common) {
   test('reading a blob that does not exist', function(t) {
     common.setup(test, function(err, store) {
       t.notOk(err, 'no setup err')
-    
+
       var rs = store.createReadStream({name: 'test.js', key: '8843d7f92416211de9ebb963ff4ce28125932878'})
 
       rs.on('error', function(e) {
@@ -63,7 +93,7 @@ module.exports.blobReadError = function(test, common) {
         })
       })
     })
-    
+
   })
 }
 
@@ -75,11 +105,11 @@ module.exports.blobExists = function(test, common) {
       store.exists(blobMeta, function(err, exists) {
         t.error(err)
         t.notOk(exists, 'does not exist')
-        
+
         var ws = store.createWriteStream({name: 'test.js'}, function(err, obj) {
           t.notOk(err, 'no blob write err')
           t.ok(obj.key, 'blob has key')
-          
+
           // on this .exists call use the metadata from the writeStream
           store.exists(obj, function(err, exists) {
             t.error(err)
@@ -90,10 +120,10 @@ module.exports.blobExists = function(test, common) {
             })
           })
         })
-        
+
         from([new Buffer('foo'), new Buffer('bar')]).pipe(ws)
       })
-      
+
     })
   })
 }
